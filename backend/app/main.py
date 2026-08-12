@@ -2,7 +2,11 @@ from fastapi import Depends, FastAPI
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.database import Base, engine, get_db
+from app.models import Game, GamePlayer, User
+
+
+Base.metadata.create_all(bind=engine)
 
 
 app = FastAPI(
