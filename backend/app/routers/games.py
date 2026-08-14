@@ -71,6 +71,19 @@ def build_game_response(
     )
 
 
+def get_membership(
+    game_id: int,
+    user_id: int,
+    db: Session,
+):
+    statement = select(GamePlayer).where(
+        GamePlayer.game_id == game_id,
+        GamePlayer.user_id == user_id,
+    )
+
+    return db.scalar(statement)
+
+
 @router.post(
     "",
     response_model=GameResponse,
@@ -222,4 +235,111 @@ def delete_game(
 
     return Response(
         status_code=status.HTTP_204_NO_CONTENT
+    )
+
+
+@router.post(
+    "/{game_id}/join",
+    response_model=GameResponse,
+)
+def join_game(
+    game_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    game_statement = (
+        select(Game)
+        .where(Game.id == game_id)
+        .with_for_update()
+    )
+
+    game = db.scalar(game_statement)
+
+    if game is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Game not found",
+        )
+
+    if game.status != "open":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This game is not open for joining",
+        )
+
+    existing_membership = get_membership(
+        game.id,
+        current_user.id,
+        db,
+    )
+
+    if existing_membership:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="You have already joined this game",
+        )
+
+    current_players = get_player_count(
+        game.id,
+        db,
+    )
+
+    if current_players >= game.max_players:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This game is full",
+        )
+
+    membership = GamePlayer(
+        game_id=game.id,
+        user_id=current_user.id,
+    )
+
+    db.add(membership)
+    db.commit()
+
+    return build_game_response(
+        game,
+        db,
+    )
+
+
+@router.delete( #creator cant leave the game. delete or cancel game
+    "/{game_id}/leave",
+    response_model=GameResponse,
+)
+def leave_game(
+    game_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    game = get_game_or_404(
+        game_id,
+        db,
+    )
+
+    membership = get_membership(
+        game.id,
+        current_user.id,
+        db,
+    )
+
+    if membership is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="You have not joined this game",
+        )
+
+    if game.creator_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Game creators cannot leave their own game",
+        )
+
+    db.delete(membership)
+    db.commit()
+
+    return build_game_response(
+        game,
+        db,
     )
