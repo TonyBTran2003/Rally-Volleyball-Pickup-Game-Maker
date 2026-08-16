@@ -109,3 +109,92 @@ button:hover {
 .hidden {
     display: none;
 }
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.page-header h1 {
+    margin-bottom: 6px;
+}
+
+.button-link {
+    display: inline-block;
+    background: #111827;
+    color: white;
+    text-decoration: none;
+    padding: 12px 18px;
+    border-radius: 8px;
+}
+
+.button-link:hover {
+    opacity: 0.9;
+}
+
+.games-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.game-card {
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow:
+        0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.game-card h2 {
+    margin-top: 0;
+}
+
+.game-description {
+    color: #555;
+    line-height: 1.5;
+}
+
+.game-details {
+    margin: 20px 0;
+}
+
+.game-details p {
+    margin: 8px 0;
+}
+
+.game-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.game-actions button {
+    flex: 1;
+}
+
+.leave-button {
+    background: #9a3412;
+}
+
+.delete-button {
+    background: #991b1b;
+}
+
+.disabled-button {
+    background: #9ca3af;
+    cursor: not-allowed;
+}
+
+.organizer-badge {
+    display: inline-block;
+    background: #dbeafe;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 14px;
+    margin-bottom: 10px;
+}

@@ -22,6 +22,7 @@
 <nav>
     <a href="index.html">Rally</a>
     <a href="games.html">Games</a>
+    <a href="create-game.html">Create Game</a>
 
     <button id="logout-button">
         Logout
@@ -31,17 +32,36 @@
 
 <main class="container">
 
-    <h1>Rally Games</h1>
+    <section class="page-header">
+        <div>
+            <h1>Find a Game</h1>
 
-    <div class="card">
-
-        <h2>Logged In User</h2>
-
-        <div id="current-user">
-            Loading...
+            <p id="welcome-message">
+                Loading...
+            </p>
         </div>
 
-    </div>
+        <a
+            class="button-link"
+            href="create-game.html"
+        >
+            + Create Game
+        </a>
+    </section>
+
+
+    <div
+        id="games-message"
+        class="message hidden"
+    ></div>
+
+
+    <section
+        id="games-list"
+        class="games-grid"
+    >
+        <p>Loading games...</p>
+    </section>
 
 </main>
 
@@ -50,4 +70,5 @@
 <script src="js/games.js"></script>
 
 </body>
+
 </html>

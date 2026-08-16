@@ -1,0 +1,12 @@
+ id |   username    | skill_level  | preferred_position 
+----+---------------+--------------+--------------------
+  1 | tony          | intermediate | setter
+  4 | tony1         | beginner     | setter
+  5 | alex1         | beginner     | setter
+  6 | sam1          | beginner     | setter
+  7 | peter1        | beginner     | setter
+  8 | frontenduser  | advanced     | libero
+  9 | frontenduser2 | advanced     | libero
+ 10 | user1         | intermediate | opposite
+(8 rows)
+
