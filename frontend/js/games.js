@@ -140,28 +140,6 @@ document.addEventListener(
 );
 
 
-function setupLogout() {
-    const button =
-        document.getElementById(
-            "logout-button"
-        );
-
-    if (!button) {
-        return;
-    }
-
-    button.addEventListener(
-        "click",
-        function () {
-            removeToken();
-
-            window.location.href =
-                "login.html";
-        }
-    );
-}
-
-
 async function initializeGamesPage() {
     if (!getToken()) {
         window.location.href =
