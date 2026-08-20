@@ -172,3 +172,77 @@ def test_duplicate_join_is_rejected(
 
 
     assert second_join.status_code == 409
+
+
+def test_leave_game(client):
+    tony_headers = (
+        create_user_and_login(
+            client,
+            "tony@example.com",
+            "tony",
+            "RallyPass123!",
+        )
+    )
+
+
+    alex_headers = (
+        create_user_and_login(
+            client,
+            "alex@example.com",
+            "alex",
+            "AlexPass123!",
+        )
+    )
+
+
+    game_response = client.post(
+        "/games",
+        headers=tony_headers,
+        json={
+            "title":
+                "Friday Volleyball",
+
+            "location":
+                "Main Gym",
+
+            "game_date":
+                "2026-09-01",
+
+            "start_time":
+                "18:30:00",
+
+            "max_players": 12,
+
+            "skill_level":
+                "intermediate",
+
+            "format":
+                "6v6",
+        },
+    )
+
+
+    game_id = game_response.json()["id"]
+
+
+    client.post(
+        "/games/{}/join".format(game_id),
+        headers=alex_headers,
+    )
+
+
+    leave_response = client.delete(
+        "/games/{}/leave".format(game_id),
+        headers=alex_headers,
+    )
+
+
+    assert leave_response.status_code == 200
+
+
+    assert (
+        leave_response.json()[
+            "current_players"
+        ]
+        == 1
+    )

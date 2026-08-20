@@ -60,16 +60,6 @@ def client():
     with TestClient(app) as test_client:
         yield test_client
 
-import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
-from app.database import Base, get_db
-from app.main import app
-from app.models import Game, GamePlayer, User
-
-
 TEST_DATABASE_URL = (
     "postgresql+psycopg://"
     "rally_user:rally_dev_password"
