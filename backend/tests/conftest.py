@@ -27,67 +27,13 @@ TestingSessionLocal = sessionmaker(
     expire_on_commit=False,
 )
 
+
 def override_get_db():
     with TestingSessionLocal() as db:
         yield db
+
 
 app.dependency_overrides[get_db] = override_get_db
-
-@pytest.fixture(scope="session", autouse=True)
-
-def setup_test_database():
-    Base.metadata.drop_all(bind=test_engine)
-    Base.metadata.create_all(bind=test_engine)
-
-    yield
-
-    Base.metadata.drop_all(bind=test_engine)
-
-@pytest.fixture(autouse=True)
-def clean_database():
-    yield
-
-    with test_engine.begin() as connection:
-        for table in reversed(
-            Base.metadata.sorted_tables
-        ):
-            connection.execute(
-                table.delete()
-            )
-
-@pytest.fixture
-def client():
-    with TestClient(app) as test_client:
-        yield test_client
-
-TEST_DATABASE_URL = (
-    "postgresql+psycopg://"
-    "rally_user:rally_dev_password"
-    "@localhost:5432/rally_test"
-)
-
-
-test_engine = create_engine(
-    TEST_DATABASE_URL,
-    pool_pre_ping=True,
-)
-
-
-TestingSessionLocal = sessionmaker(
-    bind=test_engine,
-    autoflush=False,
-    expire_on_commit=False,
-)
-
-
-def override_get_db():
-    with TestingSessionLocal() as db:
-        yield db
-
-
-app.dependency_overrides[get_db] = (
-    override_get_db
-)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -132,7 +78,6 @@ def auth_headers(client):
         },
     )
 
-
     response = client.post(
         "/auth/login",
         data={
@@ -141,11 +86,7 @@ def auth_headers(client):
         },
     )
 
-
-    token = response.json()[
-        "access_token"
-    ]
-
+    token = response.json()["access_token"]
 
     return {
         "Authorization":
