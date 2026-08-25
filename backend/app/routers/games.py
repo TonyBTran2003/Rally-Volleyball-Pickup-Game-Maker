@@ -13,6 +13,15 @@ from app.schemas.game import (
     GameUpdate,
 )
 
+from app.services import game_service
+
+from app.services.game_service import (
+    build_game_response,
+    get_game_or_404,
+    get_membership,
+    get_player_count,
+)
+
 
 router = APIRouter(
     prefix="/games",
@@ -20,68 +29,6 @@ router = APIRouter(
 )
 
 
-def get_game_or_404(
-    game_id: int,
-    db: Session,
-):
-    game = db.get(Game, game_id)
-
-    if game is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Game not found",
-        )
-
-    return game
-
-
-def get_player_count(
-    game_id: int,
-    db: Session,
-):
-    statement = (
-        select(func.count())
-        .select_from(GamePlayer)
-        .where(GamePlayer.game_id == game_id)
-    )
-
-    return db.scalar(statement)
-
-
-def build_game_response(
-    game: Game,
-    db: Session,
-):
-    return GameResponse(
-        id=game.id,
-        creator_id=game.creator_id,
-        title=game.title,
-        description=game.description,
-        location=game.location,
-        game_date=game.game_date,
-        start_time=game.start_time,
-        max_players=game.max_players,
-        current_players=get_player_count(
-            game.id,
-            db,
-        ),
-        skill_level=game.skill_level,
-        format=game.format,
-        status=game.status,
-    )
-
-
-def get_membership(
-    game_id: int,
-    user_id: int,
-    db: Session,
-):
-    statement = select(GamePlayer).where(
-        GamePlayer.game_id == game_id,
-        GamePlayer.user_id == user_id,
-    )
-
-    return db.scalar(statement)
 
 
 @router.post(
@@ -89,65 +36,29 @@ def get_membership(
     response_model=GameResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def create_game(
+
+def create_game_endpoint(
     game_data: GameCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(
+        get_current_user
+    ),
 ):
-    game = Game(
-        creator_id=current_user.id,
-        title=game_data.title,
-        description=game_data.description,
-        location=game_data.location,
-        game_date=game_data.game_date,
-        start_time=game_data.start_time,
-        max_players=game_data.max_players,
-        skill_level=game_data.skill_level,
-        format=game_data.format,
-        status="open",
-    )
-
-    db.add(game)
-
-    db.flush()
-
-    creator_membership = GamePlayer(
-        game_id=game.id,
-        user_id=current_user.id,
-    )
-
-    db.add(creator_membership)
-
-    db.commit()
-    db.refresh(game)
-
-    return build_game_response(
-        game,
+    return game_service.create_game(
+        game_data,
+        current_user,
         db,
     )
 
 
 @router.get(
     "",
-    response_model=List[GameResponse]
+    response_model=List[GameResponse],
 )
 def get_games(
     db: Session = Depends(get_db),
 ):
-    statement = (
-        select(Game)
-        .order_by(
-            Game.game_date,
-            Game.start_time,
-        )
-    )
-
-    games = db.scalars(statement).all()
-
-    return [
-        build_game_response(game, db)
-        for game in games
-    ]
+    return game_service.list_games(db)
 
 
 @router.get(
@@ -173,39 +84,18 @@ def get_game(
     "/{game_id}",
     response_model=GameResponse,
 )
-def update_game(
+def update_game_endpoint(
     game_id: int,
     game_data: GameUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(
+        get_current_user
+    ),
 ):
-    game = get_game_or_404(
+    return game_service.update_game(
         game_id,
-        db,
-    )
-
-    if game.creator_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have permission to edit this game",
-        )
-
-    updates = game_data.model_dump(
-        exclude_unset=True
-    )
-
-    for field, value in updates.items():
-        setattr(
-            game,
-            field,
-            value,
-        )
-
-    db.commit()
-    db.refresh(game)
-
-    return build_game_response(
-        game,
+        game_data,
+        current_user,
         db,
     )
 
@@ -214,24 +104,18 @@ def update_game(
     "/{game_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-def delete_game(
+def delete_game_endpoint(
     game_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(
+        get_current_user
+    ),
 ):
-    game = get_game_or_404(
+    game_service.delete_game(
         game_id,
+        current_user,
         db,
     )
-
-    if game.creator_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have permission to delete this game",
-        )
-
-    db.delete(game)
-    db.commit()
 
     return Response(
         status_code=status.HTTP_204_NO_CONTENT
@@ -242,104 +126,33 @@ def delete_game(
     "/{game_id}/join",
     response_model=GameResponse,
 )
-def join_game(
+def join_game_endpoint(
     game_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(
+        get_current_user
+    ),
 ):
-    game_statement = (
-        select(Game)
-        .where(Game.id == game_id)
-        .with_for_update()
-    )
-
-    game = db.scalar(game_statement)
-
-    if game is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Game not found",
-        )
-
-    if game.status != "open":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="This game is not open for joining",
-        )
-
-    existing_membership = get_membership(
-        game.id,
-        current_user.id,
-        db,
-    )
-
-    if existing_membership:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="You have already joined this game",
-        )
-
-    current_players = get_player_count(
-        game.id,
-        db,
-    )
-
-    if current_players >= game.max_players:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="This game is full",
-        )
-
-    membership = GamePlayer(
-        game_id=game.id,
-        user_id=current_user.id,
-    )
-
-    db.add(membership)
-    db.commit()
-
-    return build_game_response(
-        game,
+    return game_service.join_game(
+        game_id,
+        current_user,
         db,
     )
 
 
-@router.delete( #creator cant leave the game. delete or cancel game
+@router.delete(
     "/{game_id}/leave",
     response_model=GameResponse,
 )
-def leave_game(
+def leave_game_endpoint(
     game_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(
+        get_current_user
+    ),
 ):
-    game = get_game_or_404(
+    return game_service.leave_game(
         game_id,
-        db,
-    )
-
-    membership = get_membership(
-        game.id,
-        current_user.id,
-        db,
-    )
-
-    if membership is None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="You have not joined this game",
-        )
-
-    if game.creator_id == current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Game creators cannot leave their own game",
-        )
-
-    db.delete(membership)
-    db.commit()
-
-    return build_game_response(
-        game,
+        current_user,
         db,
     )
