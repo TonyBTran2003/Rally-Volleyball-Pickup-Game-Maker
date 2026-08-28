@@ -185,3 +185,214 @@ def test_cannot_lower_capacity_below_current_players(
         "Maximum players cannot be "
         "lower than the current player count"
     )
+
+def create_test_game(
+    client,
+    auth_headers,
+    title,
+    skill_level="intermediate",
+    game_format="6v6",
+):
+    return client.post(
+        "/games",
+        headers=auth_headers,
+        json={
+            "title": title,
+            "location": "Main Gym",
+            "game_date": "2027-01-15",
+            "start_time": "18:30:00",
+            "max_players": 12,
+            "skill_level": skill_level,
+            "format": game_format,
+        },
+    )
+
+def test_game_pagination(
+    client,
+    auth_headers,
+):
+    for number in range(5):
+        create_test_game(
+            client,
+            auth_headers,
+            "Game {}".format(number),
+        )
+
+    response = client.get(
+        "/games?page=1&page_size=2"
+    )
+
+    assert response.status_code == 200
+
+    games = response.json()
+
+    assert len(games) == 2
+
+
+def test_second_page(
+    client,
+    auth_headers,
+):
+    for number in range(5):
+        create_test_game(
+            client,
+            auth_headers,
+            "Game {}".format(number),
+        )
+
+    response = client.get(
+        "/games?page=2&page_size=2"
+    )
+
+    assert response.status_code == 200
+
+    games = response.json()
+
+    assert len(games) == 2
+
+
+def test_last_page(
+    client,
+    auth_headers,
+):
+    for number in range(5):
+        create_test_game(
+            client,
+            auth_headers,
+            "Game {}".format(number),
+        )
+
+    response = client.get(
+        "/games?page=3&page_size=2"
+    )
+
+    assert response.status_code == 200
+
+    games = response.json()
+
+    assert len(games) == 1
+
+
+def test_invalid_page_is_rejected(
+    client,
+):
+    response = client.get(
+        "/games?page=0"
+    )
+
+    assert response.status_code == 422
+
+
+
+def test_page_size_limit(
+    client,
+):
+    response = client.get(
+        "/games?page_size=1000"
+    )
+
+    assert response.status_code == 422
+
+
+def test_filter_games_by_skill_level(
+    client,
+    auth_headers,
+):
+    create_test_game(
+        client,
+        auth_headers,
+        "Intermediate Game",
+        skill_level="intermediate",
+    )
+
+    create_test_game(
+        client,
+        auth_headers,
+        "Advanced Game",
+        skill_level="advanced",
+    )
+
+    response = client.get(
+        "/games?skill_level=advanced"
+    )
+
+    assert response.status_code == 200
+
+    games = response.json()
+
+    assert len(games) == 1
+    assert games[0]["title"] == "Advanced Game"
+    assert games[0]["skill_level"] == "advanced"
+
+
+
+def test_filter_games_by_format(
+    client,
+    auth_headers,
+):
+    create_test_game(
+        client,
+        auth_headers,
+        "Sixes",
+        game_format="6v6",
+    )
+
+    create_test_game(
+        client,
+        auth_headers,
+        "Beach Doubles",
+        game_format="2v2",
+    )
+
+    response = client.get(
+        "/games?format=2v2"
+    )
+
+    assert response.status_code == 200
+
+    games = response.json()
+
+    assert len(games) == 1
+    assert games[0]["format"] == "2v2"
+
+
+def test_combined_game_filters(
+    client,
+    auth_headers,
+):
+    create_test_game(
+        client,
+        auth_headers,
+        "Game A",
+        skill_level="intermediate",
+        game_format="6v6",
+    )
+
+    create_test_game(
+        client,
+        auth_headers,
+        "Game B",
+        skill_level="advanced",
+        game_format="6v6",
+    )
+
+    create_test_game(
+        client,
+        auth_headers,
+        "Game C",
+        skill_level="advanced",
+        game_format="2v2",
+    )
+
+    response = client.get(
+        "/games"
+        "?skill_level=advanced"
+        "&format=6v6"
+    )
+
+    assert response.status_code == 200
+
+    games = response.json()
+
+    assert len(games) == 1
+    assert games[0]["title"] == "Game B"

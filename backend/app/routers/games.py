@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Query
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from typing import List
@@ -21,6 +21,10 @@ from app.services.game_service import (
     get_membership,
     get_player_count,
 )
+
+from typing import List, Optional
+
+
 
 
 router = APIRouter(
@@ -56,9 +60,34 @@ def create_game_endpoint(
     response_model=List[GameResponse],
 )
 def get_games(
+    page: int = Query(
+        1,
+        ge=1,
+    ),
+    page_size: int = Query(
+        20,
+        ge=1,
+        le=100,
+    ),
+    skill_level: Optional[str] = None,
+    game_format: Optional[str] = Query(
+        None,
+        alias="format",
+    ),
+    game_status: Optional[str] = Query(
+        None,
+        alias="status",
+    ),
     db: Session = Depends(get_db),
 ):
-    return game_service.list_games(db)
+    return game_service.list_games(
+        db=db,
+        page=page,
+        page_size=page_size,
+        skill_level=skill_level,
+        game_format=game_format,
+        game_status=game_status,
+    )
 
 
 @router.get(

@@ -13,6 +13,8 @@ from app.schemas.game import GameResponse, GameUpdate
 
 from datetime import date
 
+from typing import Optional
+
 
 def validate_required_text(
     value: str,
@@ -153,13 +155,39 @@ def create_game(
 
 def list_games(
     db: Session,
+    page: int = 1,
+    page_size: int = 20,
+    skill_level: Optional[str] = None,
+    game_format: Optional[str] = None,
+    game_status: Optional[str] = None,
 ):
+    statement = select(Game)
+
+    if skill_level:
+        statement = statement.where(
+            Game.skill_level == skill_level
+        )
+
+    if game_format:
+        statement = statement.where(
+            Game.format == game_format
+        )
+
+    if game_status:
+        statement = statement.where(
+            Game.status == game_status
+        )
+
+    offset = (page - 1) * page_size
+
     statement = (
-        select(Game)
+        statement
         .order_by(
             Game.game_date,
             Game.start_time,
         )
+        .offset(offset)
+        .limit(page_size)
     )
 
     games = db.scalars(
