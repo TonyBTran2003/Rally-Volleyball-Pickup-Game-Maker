@@ -88,22 +88,14 @@ def build_game_response(
     game: Game,
     db: Session,
 ):
-    return GameResponse(
-        id=game.id,
-        creator_id=game.creator_id,
-        title=game.title,
-        description=game.description,
-        location=game.location,
-        game_date=game.game_date,
-        start_time=game.start_time,
-        max_players=game.max_players,
-        current_players=get_player_count(
-            game.id,
-            db,
-        ),
-        skill_level=game.skill_level,
-        format=game.format,
-        status=game.status,
+    current_players = get_player_count(
+        game.id,
+        db,
+    )
+
+    return build_game_response_with_count(
+        game,
+        current_players,
     )
 
 
@@ -161,7 +153,37 @@ def list_games(
     game_format: Optional[str] = None,
     game_status: Optional[str] = None,
 ):
-    statement = select(Game)
+    player_counts = (
+        select(
+            GamePlayer.game_id,
+            func.count(
+                GamePlayer.id
+            ).label(
+                "current_players"
+            ),
+        )
+        .group_by(
+            GamePlayer.game_id
+        )
+        .subquery()
+    )
+
+    statement = (
+        select(
+            Game,
+            func.coalesce(
+                player_counts.c.current_players,
+                0,
+            ).label(
+                "current_players"
+            ),
+        )
+        .outerjoin(
+            player_counts,
+            Game.id
+            == player_counts.c.game_id,
+        )
+    )
 
     if skill_level:
         statement = statement.where(
@@ -178,7 +200,9 @@ def list_games(
             Game.status == game_status
         )
 
-    offset = (page - 1) * page_size
+    offset = (
+        page - 1
+    ) * page_size
 
     statement = (
         statement
@@ -190,16 +214,16 @@ def list_games(
         .limit(page_size)
     )
 
-    games = db.scalars(
+    rows = db.execute(
         statement
     ).all()
 
     return [
-        build_game_response(
+        build_game_response_with_count(
             game,
-            db,
+            int(current_players),
         )
-        for game in games
+        for game, current_players in rows
     ]
 
 
@@ -421,3 +445,22 @@ def delete_game(
 
     db.delete(game)
     db.commit()
+
+def build_game_response_with_count(
+    game: Game,
+    current_players: int,
+):
+    return GameResponse(
+        id=game.id,
+        creator_id=game.creator_id,
+        title=game.title,
+        description=game.description,
+        location=game.location,
+        game_date=game.game_date,
+        start_time=game.start_time,
+        max_players=game.max_players,
+        current_players=current_players,
+        skill_level=game.skill_level,
+        format=game.format,
+        status=game.status,
+    )

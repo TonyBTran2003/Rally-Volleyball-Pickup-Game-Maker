@@ -396,3 +396,55 @@ def test_combined_game_filters(
 
     assert len(games) == 1
     assert games[0]["title"] == "Game B"
+
+
+def test_game_list_has_correct_player_count(
+    client,
+):
+    tony_headers = create_user_and_login(
+        client,
+        "tony@example.com",
+        "tony",
+        "RallyPass123!",
+    )
+
+    alex_headers = create_user_and_login(
+        client,
+        "alex@example.com",
+        "alex",
+        "AlexPass123!",
+    )
+
+    game_response = client.post(
+        "/games",
+        headers=tony_headers,
+        json={
+            "title": "Friday Volleyball",
+            "location": "Main Gym",
+            "game_date": "2027-01-15",
+            "start_time": "18:30:00",
+            "max_players": 12,
+            "skill_level": "intermediate",
+            "format": "6v6",
+        },
+    )
+
+    game_id = game_response.json()["id"]
+
+    client.post(
+        "/games/{}/join".format(
+            game_id
+        ),
+        headers=alex_headers,
+    )
+
+    response = client.get(
+        "/games"
+    )
+
+    assert response.status_code == 200
+
+    games = response.json()
+
+    assert len(games) == 1
+    assert games[0]["current_players"] == 2

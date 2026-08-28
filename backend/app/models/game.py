@@ -5,6 +5,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -82,3 +83,17 @@ class Game(Base):
         server_default=func.now(),
         nullable=False,
     )
+
+    __table_args__ = (
+    Index(
+        "ix_games_status_date_time",
+        "status",
+        "game_date",
+        "start_time",
+    ),
+    Index(
+        "ix_games_skill_level_date",
+        "skill_level",
+        "game_date",
+    ),
+)
