@@ -11,6 +11,32 @@ from app.schemas.game import GameCreate
 
 from app.schemas.game import GameResponse, GameUpdate
 
+from datetime import date
+
+
+def validate_required_text(
+    value: str,
+    field_name: str,
+):
+    if not value.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="{} cannot be blank".format(
+                field_name
+            ),
+        )
+
+
+def validate_game_date(
+    game_date: date,
+):
+    if game_date < date.today():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Game date cannot be in the past",
+        )
+    
+
 def get_game_or_404(
     game_id: int,
     db: Session,
@@ -84,18 +110,26 @@ def create_game(
     current_user: User,
     db: Session,
 ):
+    
+    validate_game_date(game_data.game_date)
+    validate_required_text(game_data.title,"Title",)
+    validate_required_text(game_data.location, "Location",)
     game = Game(
-        creator_id=current_user.id,
-        title=game_data.title,
-        description=game_data.description,
-        location=game_data.location,
-        game_date=game_data.game_date,
-        start_time=game_data.start_time,
-        max_players=game_data.max_players,
-        skill_level=game_data.skill_level,
-        format=game_data.format,
-        status="open",
-    )
+    creator_id=current_user.id,
+    title=game_data.title.strip(),
+    description=(
+        game_data.description.strip()
+        if game_data.description
+        else None
+    ),
+    location=game_data.location.strip(),
+    game_date=game_data.game_date,
+    start_time=game_data.start_time,
+    max_players=game_data.max_players,
+    skill_level=game_data.skill_level,
+    format=game_data.format,
+    status="open",
+)
 
     db.add(game)
 
@@ -257,12 +291,73 @@ def update_game(
     if game.creator_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to update this game",
+            detail=(
+                "You are not allowed "
+                "to update this game"
+            ),
         )
 
     update_data = game_data.model_dump(
         exclude_unset=True
     )
+
+    current_players = get_player_count(
+        game.id,
+        db,
+    )
+
+    if "max_players" in update_data:
+        if (
+            update_data["max_players"]
+            < current_players
+        ):
+            raise HTTPException(
+                status_code=(
+                    status.HTTP_409_CONFLICT
+                ),
+                detail=(
+                    "Maximum players cannot "
+                    "be lower than the current "
+                    "player count"
+                ),
+            )
+
+    if "game_date" in update_data:
+        validate_game_date(
+            update_data["game_date"]
+        )
+
+    if "title" in update_data:
+        validate_required_text(
+            update_data["title"],
+            "Title",
+        )
+
+        update_data["title"] = (
+            update_data["title"].strip()
+        )
+
+    if "location" in update_data:
+        validate_required_text(
+            update_data["location"],
+            "Location",
+        )
+
+        update_data["location"] = (
+            update_data[
+                "location"
+            ].strip()
+        )
+
+    if (
+        "description" in update_data
+        and update_data["description"]
+    ):
+        update_data["description"] = (
+            update_data[
+                "description"
+            ].strip()
+        )
 
     for field, value in update_data.items():
         setattr(

@@ -12,6 +12,8 @@ from app.schemas.user import (
     UserResponse,
 )
 
+from sqlalchemy.exc import IntegrityError
+
 
 def register_user(
     user_data: UserCreate,
@@ -57,7 +59,18 @@ def register_user(
     )
 
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Email or username "
+                "already exists"
+            ),
+        )
     db.refresh(user)
 
     return UserResponse(
