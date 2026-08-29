@@ -7,6 +7,16 @@ from app.database import get_db
 from app.models import Game, GamePlayer, User
 from app.routers import auth, games, users
 
+import time
+
+from fastapi import Request
+
+from app.core.logging_config import (
+    configure_logging,
+)
+
+
+logger = configure_logging()
 
 
 app = FastAPI(
@@ -14,6 +24,54 @@ app = FastAPI(
     description="API for organizing and finding volleyball games",
     version="0.1.0",
 )
+
+
+@app.middleware("http")
+async def log_requests(
+    request: Request,
+    call_next,
+):
+    start_time = time.perf_counter()
+
+    try:
+        response = await call_next(
+            request
+        )
+
+    except Exception:
+        duration = (
+            time.perf_counter()
+            - start_time
+        )
+
+        logger.exception(
+            "request_failed "
+            "method=%s path=%s "
+            "duration_ms=%.2f",
+            request.method,
+            request.url.path,
+            duration * 1000,
+        )
+
+        raise
+
+    duration = (
+        time.perf_counter()
+        - start_time
+    )
+
+    logger.info(
+        "request_completed "
+        "method=%s path=%s "
+        "status=%s duration_ms=%.2f",
+        request.method,
+        request.url.path,
+        response.status_code,
+        duration * 1000,
+    )
+
+    return response
+
 
 allowed_origins = [
     "http://localhost:5500",

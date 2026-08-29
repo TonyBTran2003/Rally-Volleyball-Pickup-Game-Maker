@@ -15,6 +15,11 @@ from datetime import date
 
 from typing import Optional
 
+import logging
+
+
+logger = logging.getLogger("rally")
+
 
 def validate_required_text(
     value: str,
@@ -139,6 +144,13 @@ def create_game(
     db.commit()
     db.refresh(game)
 
+    logger.info(
+        "game_created "
+        "game_id=%s creator_id=%s",
+        game.id,
+        current_user.id,
+        )
+
     return build_game_response(
         game,
         db,
@@ -259,9 +271,19 @@ def join_game(
     )
 
     if membership:
+        logger.warning(
+            "duplicate_join_attempt "
+            "game_id=%s user_id=%s",
+            game.id,
+            current_user.id,
+        )
+
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="You have already joined this game",
+            detail=(
+                "You have already joined "
+                "this game"
+            ),
         )
 
     current_players = get_player_count(
@@ -270,6 +292,13 @@ def join_game(
     )
 
     if current_players >= game.max_players:
+        logger.warning(
+            "full_game_join_attempt "
+            "game_id=%s user_id=%s",
+            game.id,
+            current_user.id,
+        )
+
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="This game is full",
@@ -282,6 +311,13 @@ def join_game(
 
     db.add(membership)
     db.commit()
+
+    logger.info(
+        "game_joined "
+        "game_id=%s user_id=%s",
+        game.id,
+        current_user.id,
+)
 
     return build_game_response(
         game,
@@ -322,6 +358,12 @@ def leave_game(
 
     db.delete(membership)
     db.commit()
+    logger.info(
+        "game_left "
+        "game_id=%s user_id=%s",
+        game.id,
+        current_user.id,
+    )
 
     return build_game_response(
         game,
@@ -445,6 +487,12 @@ def delete_game(
 
     db.delete(game)
     db.commit()
+    logger.info(
+        "game_deleted "
+        "game_id=%s creator_id=%s",
+        game.id,
+        current_user.id,
+    )
 
 def build_game_response_with_count(
     game: Game,

@@ -14,6 +14,9 @@ from app.schemas.user import (
 
 from sqlalchemy.exc import IntegrityError
 
+import logging
+
+logger = logging.getLogger("rally")
 
 def register_user(
     user_data: UserCreate,
@@ -73,6 +76,11 @@ def register_user(
         )
     db.refresh(user)
 
+    logger.info(
+        "user_registered user_id=%s",
+        user.id,
+    )
+
     return UserResponse(
         id=user.id,
         email=user.email,
@@ -107,13 +115,13 @@ def authenticate_user(
             user.password_hash,
         )
     ):
+        logger.warning(
+            "authentication_failed"
+        )
+
         raise HTTPException(
-            status_code=(
-                status.HTTP_401_UNAUTHORIZED
-            ),
-            detail=(
-                "Incorrect username or password"
-            ),
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
             headers={
                 "WWW-Authenticate": "Bearer"
             },
