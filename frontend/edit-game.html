@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Edit Game | Rally</title>
+
+    <link
+        rel="stylesheet"
+        href="css/main.css"
+    >
+</head>
+
+<body>
+
+<nav>
+    <a href="index.html">Rally</a>
+    <a href="games.html">Games</a>
+    <a href="create-game.html">Create Game</a>
+
+    <button id="logout-button">
+        Logout
+    </button>
+</nav>
+
+
+<main class="container">
+
+    <div class="card">
+
+        <h1>Edit Game</h1>
+
+        <form id="edit-game-form">
+
+            <label for="game-title">
+                Title
+            </label>
+
+            <input
+                id="game-title"
+                type="text"
+                minlength="3"
+                maxlength="100"
+                required
+            >
+
+
+            <label for="game-description">
+                Description
+            </label>
+
+            <textarea
+                id="game-description"
+                maxlength="1000"
+                rows="4"
+            ></textarea>
+
+
+            <label for="game-location">
+                Location
+            </label>
+
+            <input
+                id="game-location"
+                type="text"
+                required
+            >
+
+
+            <label for="game-date">
+                Date
+            </label>
+
+            <input
+                id="game-date"
+                type="date"
+                required
+            >
+
+
+            <label for="game-time">
+                Start Time
+            </label>
+
+            <input
+                id="game-time"
+                type="time"
+                required
+            >
+
+
+            <label for="max-players">
+                Maximum Players
+            </label>
+
+            <input
+                id="max-players"
+                type="number"
+                min="2"
+                max="24"
+                required
+            >
+
+
+            <label for="game-skill">
+                Skill Level
+            </label>
+
+            <select
+                id="game-skill"
+                required
+            >
+                <option value="beginner">
+                    Beginner
+                </option>
+
+                <option value="intermediate">
+                    Intermediate
+                </option>
+
+                <option value="advanced">
+                    Advanced
+                </option>
+
+                <option value="competitive">
+                    Competitive
+                </option>
+            </select>
+
+
+            <label for="game-format">
+                Format
+            </label>
+
+            <select
+                id="game-format"
+                required
+            >
+                <option value="2v2">
+                    2v2
+                </option>
+
+                <option value="4v4">
+                    4v4
+                </option>
+
+                <option value="6v6">
+                    6v6
+                </option>
+            </select>
+
+
+            <label for="game-status">
+                Status
+            </label>
+
+            <select
+                id="game-status"
+                required
+            >
+                <option value="open">
+                    Open
+                </option>
+
+                <option value="cancelled">
+                    Cancelled
+                </option>
+
+                <option value="completed">
+                    Completed
+                </option>
+            </select>
+
+
+            <button type="submit">
+                Save Changes
+            </button>
+
+        </form>
+
+
+        <div
+            id="edit-game-message"
+            class="message hidden"
+        ></div>
+
+    </div>
+
+</main>
+
+
+<script src="js/api.js"></script>
+<script src="js/edit-game.js"></script>
+
+</body>
+
+</html>

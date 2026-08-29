@@ -276,16 +276,23 @@ function createGameCard(
 
 
     if (isCreator) {
-        actionHtml = `
-            <button
-                class="delete-button"
-                data-action="delete"
-                data-game-id="${game.id}"
-            >
-                Delete Game
-            </button>
-        `;
-    }
+    actionHtml = `
+        <a
+            class="button-link"
+            href="edit-game.html?id=${game.id}"
+        >
+            Edit Game
+        </a>
+
+        <button
+            class="delete-button"
+            data-action="delete"
+            data-game-id="${game.id}"
+        >
+            Delete Game
+        </button>
+    `;
+}
 
     else if (hasJoined) {
         actionHtml = `
