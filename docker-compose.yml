@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:16
+    container_name: rally-db
+
+    environment:
+      POSTGRES_USER: rally_user
+      POSTGRES_PASSWORD: rally_dev_password
+      POSTGRES_DB: rally_db
+
+    volumes:
+      - rally_postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U rally_user -d rally_db"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+
+    container_name: rally-api
+
+    environment:
+      DATABASE_URL: postgresql+psycopg://rally_user:rally_dev_password@db:5432/rally_db
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    command: >
+      sh -c "
+      alembic upgrade head &&
+      fastapi run app/main.py
+      --host 0.0.0.0
+      --port 8000
+      "
+
+volumes:
+  rally_postgres_data:

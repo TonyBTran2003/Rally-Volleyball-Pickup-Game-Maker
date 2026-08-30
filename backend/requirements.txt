@@ -4,7 +4,6 @@ annotated-types==0.7.0
 anyio==4.5.2
 argon2-cffi==23.1.0
 argon2-cffi-bindings==21.2.0
-backports.zoneinfo==0.2.1
 certifi==2026.7.22
 cffi==1.17.1
 click==8.1.8
@@ -30,7 +29,6 @@ markdown-it-py==3.0.0
 MarkupSafe==2.1.5
 mdurl==0.1.2
 packaging==26.2
-pkg_resources==0.0.0
 pluggy==1.5.0
 psycopg==3.2.13
 psycopg-binary==3.2.13
