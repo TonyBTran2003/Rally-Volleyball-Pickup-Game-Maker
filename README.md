@@ -2,7 +2,7 @@
 
 Rally is a full-stack pickup volleyball platform designed to help players create, discover, join, and manage local volleyball games.
 
-The project started as a functional full-stack MVP and is being expanded into a more production-ready and scalable backend system.
+The project started as a functional full-stack MVP and has been expanded into a more production-ready backend system with automated testing, database migrations, validation, query optimization, and structured logging.
 
 ---
 
@@ -15,15 +15,17 @@ Users can:
 - Register and log in
 - Create volleyball games
 - Browse available games
+- Filter and paginate games
 - Join and leave games
 - View player counts
-- Manage games they created
+- Edit games they created
 - Delete their own games
 - Log out securely
 
 ### Current Tech Stack
 
 #### Backend
+
 - Python
 - FastAPI
 - SQLAlchemy
@@ -31,25 +33,30 @@ Users can:
 - Pydantic
 
 #### Frontend
+
 - HTML
 - CSS
 - Vanilla JavaScript
 
 #### Authentication
+
 - JWT authentication
 - Argon2 password hashing
 - Protected API routes
 - Ownership-based authorization
 
 #### Database
+
 - PostgreSQL
 - SQLAlchemy ORM
 - Alembic migrations
 - Foreign keys
 - Unique constraints
+- Database indexes
 - Many-to-many game membership
 
 #### Testing
+
 - pytest
 - FastAPI TestClient
 - HTTPX
@@ -149,6 +156,15 @@ Users can create volleyball games with information such as:
 
 The creator is automatically added as the first player.
 
+Rally supports full CRUD functionality through both the REST API and frontend:
+
+```text
+Create → Create a game
+Read   → Browse and view games
+Update → Edit a game
+Delete → Delete a game
+```
+
 Rally also tracks player membership using a separate `game_players` table.
 
 ```text
@@ -173,7 +189,7 @@ A unique constraint prevents the same user from joining the same game more than 
 
 ## Concurrency Protection
 
-Rally includes basic protection against race conditions when multiple users try to join the final available spot in a game.
+Rally includes protection against race conditions when multiple users try to join the final available spot in a game.
 
 The backend locks the game row while checking player capacity:
 
@@ -184,6 +200,64 @@ select(Game).where(
 ```
 
 This helps prevent a game from exceeding its maximum number of players during concurrent join requests.
+
+---
+
+## Validation and Error Handling
+
+Rally includes both request validation and application-level business validation.
+
+Examples include:
+
+- Game dates cannot be in the past
+- Titles and locations cannot contain only whitespace
+- Game capacity cannot be reduced below the current player count
+- Duplicate joins are rejected
+- Users cannot join full games
+- Game creators cannot leave their own games
+- Non-creators cannot edit or delete games
+- Invalid authentication tokens are rejected
+
+The API uses appropriate HTTP status codes such as `400`, `401`, `403`, `404`, `409`, and `422` depending on the type of failure.
+
+---
+
+## Pagination and Filtering
+
+The game discovery endpoint supports pagination and filtering.
+
+Examples:
+
+```text
+GET /games?page=1&page_size=20
+
+GET /games?skill_level=intermediate
+
+GET /games?format=6v6
+
+GET /games?status=open
+
+GET /games?skill_level=advanced&format=6v6&page=2
+```
+
+Pagination limits the number of games returned per request, while filtering is performed directly in PostgreSQL.
+
+---
+
+## Database Optimization
+
+Rally includes database indexes designed around common game queries, including filtering by status, skill level, and game date.
+
+The game listing endpoint was also optimized to remove an N+1 query pattern.
+
+Previously, returning 20 games could require approximately:
+
+```text
+1 query to retrieve games
+20 additional queries to count players
+```
+
+Player counts are now calculated using a grouped SQL subquery and joined to the game results, reducing the number of database queries required when listing games.
 
 ---
 
@@ -228,10 +302,16 @@ Current tests cover functionality such as:
 - Incorrect passwords
 - Protected endpoints
 - Game creation
+- Game validation
+- Pagination and filtering
 - Joining games
 - Duplicate joins
 - Leaving games
+- Full-game protection
 - Player count updates
+- Creator restrictions
+- Update and delete authorization
+- Missing game handling
 
 Tests can be run with:
 
@@ -241,54 +321,88 @@ pytest -v
 
 ---
 
+## Logging
+
+Rally includes structured application logging for HTTP requests and important business events.
+
+Request logs include:
+
+```text
+method
+path
+status code
+response time
+```
+
+Application events include:
+
+```text
+user_registered
+game_created
+game_joined
+game_left
+game_deleted
+```
+
+Warnings are also logged for events such as failed authentication, duplicate joins, and attempts to join full games.
+
+Sensitive information such as passwords and JWTs is not logged.
+
+---
+
+## Development Seed Data
+
+Rally includes a seed script for quickly creating realistic development users, games, and memberships.
+
+Run:
+
+```bash
+python -m scripts.seed_demo
+```
+
+The seed script is separate from automated test data and is intended for development and manual testing.
+
+---
+
 # What Rally Will Become
 
-The long-term goal is to evolve Rally from a working full-stack application into a scalable, production-oriented backend system.
+The long-term goal is to evolve Rally from a production-oriented full-stack application into a scalable distributed system.
 
-The project will progressively introduce better validation, performance improvements, distributed infrastructure, and measurable scalability.
+The next phases will focus on distributed infrastructure, real-time features, performance testing, and deployment.
 
 ---
 
 ## Phase 2 — Production Quality
 
-The current focus is improving the quality and maintainability of the application.
+Phase 2 focused on improving the quality, maintainability, and performance of the original MVP.
 
-Planned improvements include:
+Completed improvements include:
 
-- Stronger request validation
+- Alembic database migrations
+- Automated API testing
+- Separate PostgreSQL test database
+- Service-layer architecture
+- Stronger request and business validation
 - Improved error handling
 - Pagination
 - Game filtering
-- Search
 - Database indexes
-- Query optimization
+- N+1 query optimization
 - Structured logging
-- Better test coverage
-- Seed and test data
-- Cleaner service-layer architecture
-
-Example future API requests:
-
-```text
-GET /games?page=1&page_size=20
-
-GET /games?skill=intermediate
-
-GET /games?format=6v6
-
-GET /games?status=open
-```
+- Expanded authorization and edge-case tests
+- Development seed data
+- Full frontend CRUD functionality
 
 ---
 
 ## Phase 3 — Scalability
 
-After the application layer is stable, Rally will be expanded to support a more distributed architecture.
+Rally will next be expanded to support a more distributed architecture.
 
 Planned technologies include:
 
-- Redis
 - Docker
+- Redis
 - Nginx
 - Background workers
 - Multiple FastAPI instances
@@ -309,14 +423,13 @@ FastAPI   FastAPI   FastAPI
    |         |         |
    +---------+---------+
              |
-             v
-           Redis
-             |
-             v
-        PostgreSQL
-             |
-             v
-      Background Workers
+       +-----+-----+
+       |           |
+       v           v
+     Redis     PostgreSQL
+       |
+       v
+Background Workers
 ```
 
 Redis may be used for caching, shared application state, and reducing repeated database work.
@@ -409,14 +522,14 @@ Planned tools and techniques include:
 
 Rather than simply claiming Rally is scalable, the goal is to measure it.
 
-Example future performance documentation:
+Future performance documentation will use actual measured results such as:
 
 ```text
-Concurrent users: 500
-Requests/second: 1,200
-p95 latency: 120 ms
-p99 latency: 190 ms
-Error rate: 0.2%
+Concurrent users: <measured value>
+Requests/second: <measured value>
+p95 latency: <measured value>
+p99 latency: <measured value>
+Error rate: <measured value>
 ```
 
 ---
@@ -434,7 +547,15 @@ Automated testing
     ↓
 Database migrations
     ↓
-Validation and optimization
+Validation
+    ↓
+Pagination and filtering
+    ↓
+Database optimization
+    ↓
+Logging and observability
+    ↓
+Containerization
     ↓
 Caching
     ↓
@@ -447,4 +568,4 @@ Load testing
 Deployment
 ```
 
-The goal is not only to build a volleyball application, but to use Rally as a practical environment for learning and demonstrating full-stack development, backend engineering, database design, concurrency, testing, and scalable system design.
+The goal is not only to build a volleyball application, but to use Rally as a practical environment for learning and demonstrating full-stack development, backend engineering, database design, concurrency, testing, performance optimization, and scalable system design.
