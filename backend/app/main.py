@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -10,6 +10,10 @@ from app.routers import auth, games, users
 import time
 
 from fastapi import Request
+
+from redis.exceptions import RedisError
+
+from app.redis_client import redis_client
 
 from app.core.logging_config import (
     configure_logging,
@@ -115,4 +119,19 @@ def database_health(db: Session = Depends(get_db)):
         "status": "healthy",
         "database": result[0],
         "user": result[1],
+    }
+
+@app.get("/health/redis")
+def redis_health():
+    try:
+        redis_client.ping()
+    except RedisError:
+        raise HTTPException(
+            status_code=503,
+            detail="Redis is unavailable",
+        ) from None
+
+    return {
+        "status": "healthy",
+        "redis": "connected",
     }
