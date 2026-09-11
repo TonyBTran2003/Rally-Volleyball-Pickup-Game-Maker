@@ -17,6 +17,8 @@ from typing import Optional
 
 import logging
 
+from app.services.cache_service import invalidate_games_cache
+
 
 logger = logging.getLogger("rally")
 

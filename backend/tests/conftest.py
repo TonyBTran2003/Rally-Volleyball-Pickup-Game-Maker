@@ -7,6 +7,7 @@ from app.database import Base, get_db
 from app.main import app
 from app.models import Game, GamePlayer, User
 
+from app.services import cache_service
 
 TEST_DATABASE_URL = (
     "postgresql+psycopg://"
@@ -92,3 +93,23 @@ def auth_headers(client):
         "Authorization":
             "Bearer {}".format(token)
     }
+
+@pytest.fixture(autouse=True)
+def bypass_cache_in_api_tests(monkeypatch):
+    monkeypatch.setattr(
+        cache_service,
+        "read_games_cache",
+        lambda filters: (None, None),
+    )
+
+    monkeypatch.setattr(
+        cache_service,
+        "write_games_cache",
+        lambda key, games: None,
+    )
+
+    monkeypatch.setattr(
+        cache_service,
+        "invalidate_games_cache",
+        lambda: None,
+    )

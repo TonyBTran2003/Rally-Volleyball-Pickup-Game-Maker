@@ -12,7 +12,7 @@ from app.schemas.game import (
     GameUpdate,
 )
 
-from app.services import game_service
+from app.services import game_service, cache_service
 
 from app.services.game_service import (
     build_game_response,
@@ -59,15 +59,9 @@ def create_game_endpoint(
     response_model=List[GameResponse],
 )
 def get_games(
-    page: int = Query(
-        1,
-        ge=1,
-    ),
-    page_size: int = Query(
-        20,
-        ge=1,
-        le=100,
-    ),
+    response: Response,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     skill_level: Optional[str] = None,
     game_format: Optional[str] = Query(
         None,
@@ -79,7 +73,23 @@ def get_games(
     ),
     db: Session = Depends(get_db),
 ):
-    return game_service.list_games(
+    filters = {
+        "page": page,
+        "page_size": page_size,
+        "skill_level": skill_level,
+        "format": game_format,
+        "status": game_status,
+    }
+
+    key, cached_games = cache_service.read_games_cache(
+        filters
+    )
+
+    if cached_games is not None:
+        response.headers["X-Cache"] = "HIT"
+        return cached_games
+
+    games = game_service.list_games(
         db=db,
         page=page,
         page_size=page_size,
@@ -87,6 +97,14 @@ def get_games(
         game_format=game_format,
         game_status=game_status,
     )
+
+    cache_service.write_games_cache(key, games)
+
+    response.headers["X-Cache"] = (
+        "MISS" if key is not None else "BYPASS"
+    )
+
+    return games
 
 
 @router.get(
