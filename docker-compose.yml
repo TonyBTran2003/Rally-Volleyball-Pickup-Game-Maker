@@ -41,6 +41,8 @@ services:
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
       REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
 
     ports:
       - "8000:8000"
@@ -58,6 +60,32 @@ services:
       --host 0.0.0.0
       --port 8000
       "
+  worker:
+    build:
+      context: ./backend
 
+    container_name: rally-worker
+
+    environment:
+      DATABASE_URL: postgresql+psycopg://rally_user:rally_dev_password@db:5432/rally_db
+      SECRET_KEY: ${SECRET_KEY}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    command:
+      - celery
+      - -A
+      - app.workers.celery_app:celery_app
+      - worker
+      - --loglevel=INFO
+      - --concurrency=1
+    
 volumes:
   rally_postgres_data:
