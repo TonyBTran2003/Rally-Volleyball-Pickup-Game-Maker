@@ -36,7 +36,11 @@ def read_games_cache(filters):
 
     if cached is None:
         return key, None
-
+    
+    if not isinstance(cached, str):
+        logger.warning("games_cache_unexpected_type")
+        return key, None
+    
     try:
         games = games_adapter.validate_json(cached)
 

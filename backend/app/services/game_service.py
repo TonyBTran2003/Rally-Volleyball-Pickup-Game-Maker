@@ -64,16 +64,14 @@ def get_game_or_404(
 def get_player_count(
     game_id: int,
     db: Session,
-):
+) -> int:
     statement = (
         select(func.count())
         .select_from(GamePlayer)
-        .where(
-            GamePlayer.game_id == game_id
-        )
+        .where(GamePlayer.game_id == game_id)
     )
 
-    return db.scalar(statement)
+    return db.execute(statement).scalar_one()
 
 
 def get_membership(
