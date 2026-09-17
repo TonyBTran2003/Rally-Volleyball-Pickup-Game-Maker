@@ -19,6 +19,13 @@ import logging
 
 from app.services.cache_service import invalidate_games_cache
 
+from kombu.exceptions import OperationalError
+
+from app.workers.tasks import process_game_joined
+
+from typing import cast
+from celery import Task
+
 
 logger = logging.getLogger("rally")
 
@@ -142,6 +149,7 @@ def create_game(
     db.add(membership)
 
     db.commit()
+    invalidate_games_cache()
     db.refresh(game)
 
     logger.info(
@@ -311,6 +319,26 @@ def join_game(
 
     db.add(membership)
     db.commit()
+    invalidate_games_cache()
+
+    try:
+        job = cast(Task, process_game_joined).apply_async(
+            args=[game.id, current_user.id],
+            retry=False,
+        )
+    except OperationalError:
+        logger.exception(
+            "game_joined_enqueue_failed game_id=%s user_id=%s",
+            game.id,
+            current_user.id,
+        )
+    else:
+        logger.info(
+            "game_joined_queued task_id=%s game_id=%s user_id=%s",
+            job.id,
+            game.id,
+            current_user.id,
+        )
 
     logger.info(
         "game_joined "
@@ -358,6 +386,7 @@ def leave_game(
 
     db.delete(membership)
     db.commit()
+    invalidate_games_cache()
     logger.info(
         "game_left "
         "game_id=%s user_id=%s",
@@ -461,6 +490,7 @@ def update_game(
         )
 
     db.commit()
+    invalidate_games_cache()
     db.refresh(game)
 
     return build_game_response(
@@ -487,6 +517,7 @@ def delete_game(
 
     db.delete(game)
     db.commit()
+    invalidate_games_cache()
     logger.info(
         "game_deleted "
         "game_id=%s creator_id=%s",

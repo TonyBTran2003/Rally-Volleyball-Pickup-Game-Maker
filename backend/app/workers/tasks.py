@@ -19,3 +19,17 @@ def demo_job():
     return {
         "message": "Rally background worker is working",
     }
+
+@celery_app.task(name="rally.process_game_joined")
+def process_game_joined(game_id: int, user_id: int):
+    logger.info(
+        "game_joined_processed game_id=%s user_id=%s",
+        game_id,
+        user_id,
+    )
+
+    return {
+        "event": "game_joined",
+        "game_id": game_id,
+        "user_id": user_id,
+    }
